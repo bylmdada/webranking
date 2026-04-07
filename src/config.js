@@ -3,7 +3,7 @@ const sites = [
     name: 'changfu',
     baseUrl: 'https://www.changfu.me',
     sitemapUrl: 'https://www.changfu.me/sitemap.xml',
-    indexingApiPaths: [],
+    indexingApiPaths: ['/', '/about.html', '/services.html', '/news.html', '/courses.html', '/jobs.html', '/contact.html'],
     pages: [
       '/',
       '/about.html',
@@ -31,7 +31,7 @@ const sites = [
     name: 'kingkitchen',
     baseUrl: 'https://kingkitchen.changfu.me',
     sitemapUrl: 'https://kingkitchen.changfu.me/sitemap.xml',
-    indexingApiPaths: [],
+    indexingApiPaths: ['/', '/about', '/services', '/services/kitchen', '/services/ventilation', '/services/hvac', '/services/drainage', '/process', '/projects', '/contact'],
     pages: [
       '/',
       '/about',
