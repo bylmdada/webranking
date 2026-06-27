@@ -8,7 +8,7 @@ async function submitToIndexingAPI(sites) {
   const keyEnv = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
   if (!dryRun && !keyEnv) {
     log('indexing-api', 'GOOGLE_SERVICE_ACCOUNT_KEY not set, skipping Indexing API');
-    return;
+    return 0;
   }
 
   log('indexing-api', `Starting Google Indexing API submissions${dryRun ? ' (dry-run)' : ''}`);
@@ -28,7 +28,7 @@ async function submitToIndexingAPI(sites) {
     }
 
     log('indexing-api', 'Dry-run completed');
-    return;
+    return 0;
   }
 
   let credentials;
@@ -41,7 +41,7 @@ async function submitToIndexingAPI(sites) {
     }
   } catch (error) {
     log('indexing-api', `Failed to parse service account key: ${error.message}`);
-    return;
+    return 1;
   }
 
   const auth = new google.auth.GoogleAuth({
@@ -83,6 +83,7 @@ async function submitToIndexingAPI(sites) {
   }
 
   log('indexing-api', `Indexing API done: ${submitted} submitted, ${errors} errors`);
+  return errors;
 }
 
 module.exports = { submitToIndexingAPI };

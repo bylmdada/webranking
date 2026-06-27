@@ -1,25 +1,15 @@
 const { chromium } = require('playwright');
 const { isDryRun } = require('./app-options');
 const { getRuntimeProfile } = require('./runtime-config');
-const { getRandomUA, randomDelay, pickRandom, smoothScroll, simulateReading, log } = require('./utils');
+const { randomDelay, pickRandom, smoothScroll, simulateReading, newSiteContext, log } = require('./utils');
 
 const runtime = getRuntimeProfile();
 
-async function visitSite(site) {
-  const { userAgent, viewport } = getRandomUA();
+async function visitSite(browser, site) {
   const pagesToVisit = pickRandom(site.pages, Math.floor(Math.random() * 3) + 1);
+  const { context, page, userAgent } = await newSiteContext(browser);
 
   log('visit', `Starting visit to ${site.name} (${pagesToVisit.length} pages)`, { userAgent: userAgent.slice(0, 60) + '...' });
-
-  const browser = await chromium.launch({ headless: true });
-  const context = await browser.newContext({
-    userAgent,
-    viewport,
-    locale: 'zh-TW',
-    timezoneId: 'Asia/Taipei',
-  });
-
-  const page = await context.newPage();
 
   try {
     for (const pagePath of pagesToVisit) {
@@ -60,7 +50,7 @@ async function visitSite(site) {
   } catch (error) {
     log('visit', `Error visiting ${site.name}: ${error.message}`);
   } finally {
-    await browser.close();
+    await context.close();
   }
 }
 
@@ -76,10 +66,15 @@ async function runVisits(sites) {
     return;
   }
 
-  for (const site of sites) {
-    await visitSite(site);
-    // Gap between sites
-    await randomDelay(runtime.siteGapMinMs, runtime.siteGapMaxMs);
+  const browser = await chromium.launch({ headless: true });
+  try {
+    for (const site of sites) {
+      await visitSite(browser, site);
+      // Gap between sites
+      await randomDelay(runtime.siteGapMinMs, runtime.siteGapMaxMs);
+    }
+  } finally {
+    await browser.close();
   }
 
   log('visit', 'All direct visits completed');

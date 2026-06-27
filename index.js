@@ -18,6 +18,8 @@ async function main() {
   console.log(`Dry run: ${dryRun ? 'yes' : 'no'}`);
   console.log('='.repeat(60));
 
+  let failures = 0;
+
   if (modules.includes('visit')) {
     console.log('\n--- Direct Visit Module ---');
     await runVisits(sites);
@@ -30,17 +32,21 @@ async function main() {
 
   if (modules.includes('indexing')) {
     console.log('\n--- Google Indexing API Module ---');
-    await submitToIndexingAPI(sites);
+    failures += await submitToIndexingAPI(sites);
   }
 
   if (modules.includes('indexnow')) {
     console.log('\n--- IndexNow Module ---');
-    await submitToIndexNow(sites);
+    failures += await submitToIndexNow(sites);
   }
 
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
   console.log('\n' + '='.repeat(60));
   console.log(`Done! Total time: ${elapsed}s`);
+  if (failures > 0) {
+    console.log(`Completed with ${failures} submission failure(s)`);
+    process.exitCode = 1;
+  }
   console.log('='.repeat(60));
 }
 

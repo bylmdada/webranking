@@ -8,10 +8,12 @@ async function submitToIndexNow(sites) {
   const apiKey = process.env.INDEXNOW_API_KEY;
   if (!dryRun && !apiKey) {
     log('indexnow', 'INDEXNOW_API_KEY not set, skipping IndexNow');
-    return;
+    return 0;
   }
 
   log('indexnow', `Starting IndexNow submissions${dryRun ? ' (dry-run)' : ''}`);
+
+  let failures = 0;
 
   for (const site of sites) {
     if (dryRun) {
@@ -45,12 +47,14 @@ async function submitToIndexNow(sites) {
       });
       log('indexnow', `${site.name}: submitted ${urls.length} URLs from ${source} (status ${response.status})`);
     } catch (error) {
+      failures++;
       const status = error.response?.status || 'N/A';
       log('indexnow', `${site.name}: failed (status ${status}): ${error.message}`);
     }
   }
 
   log('indexnow', 'IndexNow submissions completed');
+  return failures;
 }
 
 module.exports = { submitToIndexNow };

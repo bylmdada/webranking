@@ -1,24 +1,14 @@
 const { chromium } = require('playwright');
 const { isDryRun } = require('./app-options');
 const { getRuntimeProfile } = require('./runtime-config');
-const { getRandomUA, randomDelay, pickRandom, humanType, smoothScroll, simulateReading, log } = require('./utils');
+const { randomDelay, pickRandom, humanType, smoothScroll, simulateReading, newSiteContext, log } = require('./utils');
 
 const runtime = getRuntimeProfile();
 
-async function searchAndClick(site, keyword) {
-  const { userAgent, viewport } = getRandomUA();
-
+async function searchAndClick(browser, site, keyword) {
   log('search', `Searching for "${keyword}" targeting ${site.name}`);
 
-  const browser = await chromium.launch({ headless: true });
-  const context = await browser.newContext({
-    userAgent,
-    viewport,
-    locale: 'zh-TW',
-    timezoneId: 'Asia/Taipei',
-  });
-
-  const page = await context.newPage();
+  const { context, page } = await newSiteContext(browser);
 
   try {
     // Go to Google
@@ -56,26 +46,25 @@ async function searchAndClick(site, keyword) {
       await smoothScroll(page);
       await randomDelay(1000, 3000);
 
-      // Look for our site in results
+      // Look for our site in results — grab all hrefs in one round-trip
       const targetDomain = new URL(site.baseUrl).hostname;
-      const resultLinks = await page.$$('a');
+      const hrefs = await page.$$eval('a[href]', (els) =>
+        els.map((el) => el.getAttribute('href')).filter(Boolean)
+      );
+      const match = hrefs.find((href) => href.includes(targetDomain));
 
-      for (const link of resultLinks) {
-        const href = await link.getAttribute('href').catch(() => null);
-        if (href && href.includes(targetDomain)) {
-          log('search', `Found ${site.name} in results! Clicking...`);
+      if (match) {
+        log('search', `Found ${site.name} in results! Clicking...`);
 
-          await link.click();
-          await page.waitForLoadState('domcontentloaded').catch(() => {});
-          await randomDelay(3000, 5000);
+        await page.click(`a[href="${match}"]`);
+        await page.waitForLoadState('domcontentloaded').catch(() => {});
+        await randomDelay(3000, 5000);
 
-          // Simulate reading the page
-          const readingTime = Math.floor(Math.random() * (runtime.searchReadingMaxMs - runtime.searchReadingMinMs + 1)) + runtime.searchReadingMinMs;
-          await simulateReading(page, readingTime);
+        // Simulate reading the page
+        const readingTime = Math.floor(Math.random() * (runtime.searchReadingMaxMs - runtime.searchReadingMinMs + 1)) + runtime.searchReadingMinMs;
+        await simulateReading(page, readingTime);
 
-          found = true;
-          break;
-        }
+        found = true;
       }
 
       if (!found && pageNum < 2) {
@@ -103,7 +92,7 @@ async function searchAndClick(site, keyword) {
   } catch (error) {
     log('search', `Error during search: ${error.message}`);
   } finally {
-    await browser.close();
+    await context.close();
   }
 }
 
@@ -119,15 +108,20 @@ async function runSearches(sites) {
     return;
   }
 
-  for (const site of sites) {
-    // Pick 1-2 random keywords per site per run
-    const keywords = pickRandom(site.keywords, Math.floor(Math.random() * 2) + 1);
+  const browser = await chromium.launch({ headless: true });
+  try {
+    for (const site of sites) {
+      // Pick 1-2 random keywords per site per run
+      const keywords = pickRandom(site.keywords, Math.floor(Math.random() * 2) + 1);
 
-    for (const keyword of keywords) {
-      await searchAndClick(site, keyword);
-      // Long gap between searches to avoid rate limiting
-      await randomDelay(runtime.searchGapMinMs, runtime.searchGapMaxMs);
+      for (const keyword of keywords) {
+        await searchAndClick(browser, site, keyword);
+        // Long gap between searches to avoid rate limiting
+        await randomDelay(runtime.searchGapMinMs, runtime.searchGapMaxMs);
+      }
     }
+  } finally {
+    await browser.close();
   }
 
   log('search', 'All Google searches completed');

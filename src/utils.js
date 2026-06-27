@@ -98,6 +98,18 @@ async function simulateReading(page, durationMs) {
   }
 }
 
+async function newSiteContext(browser) {
+  const { userAgent, viewport } = getRandomUA();
+  const context = await browser.newContext({
+    userAgent,
+    viewport,
+    locale: 'zh-TW',
+    timezoneId: 'Asia/Taipei',
+  });
+  const page = await context.newPage();
+  return { context, page, userAgent };
+}
+
 function log(module, message, data) {
   const timestamp = new Date().toISOString();
   const prefix = `[${timestamp}] [${module}]`;
@@ -117,5 +129,6 @@ module.exports = {
   randomMouseMove,
   humanType,
   simulateReading,
+  newSiteContext,
   log,
 };
