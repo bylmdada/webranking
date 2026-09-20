@@ -24,17 +24,21 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
+
+      - run: npx playwright install chromium --with-deps
 
       - name: Run unit tests
         run: npm test
 
       - name: Run full dry-run flow
         run: npm run dry-run
+        env:
+          RUN_MODULES: audit,visit,search,indexing,indexnow
 
       - name: Run env-driven dry-run check
         run: node index.js

@@ -3,7 +3,8 @@ const sites = [
     name: 'changfu',
     baseUrl: 'https://www.changfu.me',
     sitemapUrl: 'https://www.changfu.me/sitemap.xml',
-    indexingApiPaths: ['/', '/about.html', '/services.html', '/news.html', '/courses.html', '/jobs.html', '/contact.html'],
+    // Enable only individual JobPosting or supported livestream pages after validation.
+    indexingApiPaths: [],
     pages: [
       '/',
       '/about.html',
@@ -31,7 +32,8 @@ const sites = [
     name: 'kingkitchen',
     baseUrl: 'https://kingkitchen.changfu.me',
     sitemapUrl: 'https://kingkitchen.changfu.me/sitemap.xml',
-    indexingApiPaths: ['/', '/about', '/services', '/services/kitchen', '/services/ventilation', '/services/hvac', '/services/drainage', '/process', '/projects', '/contact'],
+    // General business pages are not eligible for Google's Indexing API.
+    indexingApiPaths: [],
     pages: [
       '/',
       '/about',
@@ -42,6 +44,12 @@ const sites = [
       '/services/drainage',
       '/process',
       '/projects',
+      '/projects/suao-lungteh-industrial-kitchen',
+      '/projects/jiaoxi-mu-en-hotel-central-kitchen',
+      '/projects/yuanshan-ba-jia-restaurant-ventilation',
+      '/projects/wujie-kindergarten-school-kitchen',
+      '/projects/yilan-hutong-yakiniku-ventilation',
+      '/projects/wujie-lai-lai-steak-ventilation',
       '/contact',
     ],
     keywords: [
@@ -60,4 +68,23 @@ const sites = [
   },
 ];
 
-module.exports = { sites };
+function getSites(extraUrls = require('../targets.json')) {
+  const { toAbsoluteUrl } = require('./url-resolver');
+  if (!Array.isArray(extraUrls)) throw new Error('targets.json must contain a URL array');
+  const result = sites.map((site) => ({ ...site, pages: [...site.pages] }));
+  for (const value of extraUrls) {
+    if (typeof value !== 'string') throw new Error('Target URL must be a string');
+    const url = new URL(value);
+    const normalized = toAbsoluteUrl(url.origin, value);
+    let site = result.find((entry) => new URL(entry.baseUrl).origin === url.origin);
+    if (!site) {
+      site = { name: url.host, baseUrl: url.origin, sitemapUrl: `${url.origin}/sitemap.xml`, pages: [], keywords: [], indexingApiPaths: [] };
+      result.push(site);
+    }
+    site.pages.push(new URL(normalized).pathname + new URL(normalized).search);
+    site.pages = [...new Set(site.pages)];
+  }
+  return result;
+}
+
+module.exports = { sites, getSites };

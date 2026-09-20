@@ -3,3 +3,4 @@ node_modules/
 credentials/
 *.key
 *.json.key
+reports/

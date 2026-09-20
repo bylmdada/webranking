@@ -47,6 +47,7 @@ test('resolveSubmissionTargets prefers sitemap URLs and filters foreign hosts', 
   assert.deepEqual(result.urls, [
     'https://example.com/',
     'https://example.com/contact',
+    'https://example.com/fallback',
   ]);
 });
 
@@ -81,4 +82,25 @@ test('resolveIndexingApiUrls only uses explicit eligible paths', () => {
     'https://example.com/jobs/123',
     'https://example.com/live/abc',
   ]);
+});
+
+test('URL normalization rejects foreign origins and credentials, strips fragments', () => {
+  const { toAbsoluteUrl, resolveDeclaredUrls } = require('../src/url-resolver');
+  for (const value of ['https://evil.test/', 'javascript:alert(1)', 'https://user:pass@example.com/', '//example.com:444/']) {
+    assert.throws(() => toAbsoluteUrl('https://example.com', value));
+  }
+  assert.deepEqual(resolveDeclaredUrls({ baseUrl: 'https://example.com', pages: ['/#top', '/'] }), ['https://example.com/']);
+  assert.deepEqual(extractLocs('<loc>https://example.com/?a=1&amp;b=&#50;</loc><loc><![CDATA[https://example.com/?a=1&b=2]]></loc>'), ['https://example.com/?a=1&b=2', 'https://example.com/?a=1&b=2']);
+});
+
+test('nested sitemaps handle cycles without duplicate fetches and reject foreign fetches', async () => {
+  const { fetchSitemapUrls } = require('../src/url-resolver');
+  const seen = [];
+  const client = { async get(url) {
+    seen.push(url);
+    return { data: url.endsWith('/child.xml') ? '<urlset><url><loc>https://example.com/a</loc></url></urlset>' : '<sitemapindex><sitemap><loc>https://example.com/root.xml</loc></sitemap><sitemap><loc>https://example.com/child.xml</loc></sitemap></sitemapindex>' };
+  } };
+  assert.deepEqual(await fetchSitemapUrls('https://example.com/root.xml', client), ['https://example.com/a']);
+  assert.equal(seen.length, 2);
+  await assert.rejects(() => fetchSitemapUrls('https://example.com/root.xml', { get: async () => ({ data: '<sitemapindex><loc>http://localhost/private.xml</loc></sitemapindex>' }) }), /origin/);
 });

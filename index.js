@@ -1,6 +1,7 @@
 require('dotenv').config();
 
-const { sites } = require('./src/config');
+const { getSites } = require('./src/config');
+const { runAudit } = require('./src/audit');
 const { getAppOptions } = require('./src/app-options');
 const { runVisits } = require('./src/visit');
 const { runSearches } = require('./src/search');
@@ -9,6 +10,7 @@ const { submitToIndexNow } = require('./src/indexnow');
 
 async function main() {
   const { modules, dryRun } = getAppOptions();
+  const sites = getSites();
   const startTime = Date.now();
 
   console.log('='.repeat(60));
@@ -19,6 +21,8 @@ async function main() {
   console.log('='.repeat(60));
 
   let failures = 0;
+
+  if (modules.includes('audit')) failures += await runAudit(sites);
 
   if (modules.includes('visit')) {
     console.log('\n--- Direct Visit Module ---');
@@ -44,7 +48,7 @@ async function main() {
   console.log('\n' + '='.repeat(60));
   console.log(`Done! Total time: ${elapsed}s`);
   if (failures > 0) {
-    console.log(`Completed with ${failures} submission failure(s)`);
+    console.log(`Completed with ${failures} failure(s)`);
     process.exitCode = 1;
   }
   console.log('='.repeat(60));

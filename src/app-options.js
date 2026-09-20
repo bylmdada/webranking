@@ -7,6 +7,15 @@ function parseBoolean(value) {
 }
 
 function resolveModules(argv, env) {
+  const allowed = ['audit', 'visit', 'search', 'indexing', 'indexnow'];
+  const flags = argv.filter((arg) => arg.endsWith('-only'));
+  if (flags.length > 1) throw new Error('Choose only one --*-only flag');
+  for (const arg of argv) {
+    if (arg !== '--dry-run' && !allowed.some((name) => arg === `--${name}-only`)) {
+      throw new Error(`Unknown option: ${arg}`);
+    }
+  }
+  if (argv.includes('--audit-only')) return ['audit'];
   if (argv.includes('--visit-only')) return ['visit'];
   if (argv.includes('--search-only')) return ['search'];
   if (argv.includes('--indexing-only')) return ['indexing'];
@@ -14,13 +23,17 @@ function resolveModules(argv, env) {
 
   const envModules = env.RUN_MODULES;
   if (envModules) {
-    return envModules
+    const modules = envModules
       .split(',')
       .map((moduleName) => moduleName.trim())
       .filter(Boolean);
+    if (!modules.length || modules.some((name) => !allowed.includes(name))) {
+      throw new Error(`RUN_MODULES must use: ${allowed.join(',')}`);
+    }
+    return [...new Set(modules)];
   }
 
-  return ['visit', 'search', 'indexing', 'indexnow'];
+  return ['audit'];
 }
 
 function getAppOptions(argv = process.argv.slice(2), env = process.env) {

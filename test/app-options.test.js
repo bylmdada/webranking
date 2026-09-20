@@ -16,7 +16,7 @@ test('getAppOptions enables dry-run from CLI flag', () => {
   const result = getAppOptions(['--dry-run'], {});
 
   assert.equal(result.dryRun, true);
-  assert.deepEqual(result.modules, ['visit', 'search', 'indexing', 'indexnow']);
+  assert.deepEqual(result.modules, ['audit']);
 });
 
 test('getAppOptions reads env module selection and dry-run flag', () => {
@@ -37,4 +37,11 @@ test('getAppOptions keeps single-module CLI shortcuts', () => {
 
   assert.equal(result.dryRun, false);
   assert.deepEqual(result.modules, ['search']);
+});
+
+test('module validation rejects typos and conflicting flags', () => {
+  assert.throws(() => getAppOptions(['--unknown'], {}), /Unknown option/);
+  assert.throws(() => getAppOptions(['--audit-only', '--search-only'], {}), /only one/);
+  assert.throws(() => getAppOptions([], { RUN_MODULES: 'audti' }), /RUN_MODULES/);
+  assert.deepEqual(getAppOptions([], { RUN_MODULES: 'audit,audit,indexnow' }).modules, ['audit', 'indexnow']);
 });

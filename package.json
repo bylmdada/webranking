@@ -5,6 +5,8 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
+    "audit": "node index.js --audit-only",
+    "sites": "node src/manage-sites.js",
     "visit": "node index.js --visit-only",
     "search": "node index.js --search-only",
     "indexing": "node index.js --indexing-only",
