@@ -3,7 +3,7 @@ const sites = [
     name: 'changfu',
     baseUrl: 'https://www.changfu.me',
     sitemapUrl: 'https://www.changfu.me/sitemap.xml',
-    // Enable only individual JobPosting or supported livestream pages after validation.
+    // Only JobPosting and livestream pages are eligible; /jobs.html has no open position to declare.
     indexingApiPaths: [],
     pages: [
       '/',

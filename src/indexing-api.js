@@ -1,7 +1,7 @@
 const { google } = require('googleapis');
 const { isDryRun } = require('./app-options');
 const { resolveIndexingApiUrls } = require('./url-resolver');
-const { log } = require('./utils');
+const { loadServiceAccount, log } = require('./utils');
 
 async function submitToIndexingAPI(sites) {
   const dryRun = isDryRun();
@@ -33,12 +33,7 @@ async function submitToIndexingAPI(sites) {
 
   let credentials;
   try {
-    // Support both base64-encoded and raw JSON
-    try {
-      credentials = JSON.parse(Buffer.from(keyEnv, 'base64').toString('utf-8'));
-    } catch {
-      credentials = JSON.parse(keyEnv);
-    }
+    credentials = loadServiceAccount(keyEnv);
   } catch (error) {
     log('indexing-api', `Failed to parse service account key: ${error.message}`);
     return 1;

@@ -2,7 +2,8 @@ name: Google Ranking Automation
 
 on:
   schedule:
-    - cron: '30 */8 * * *' # Every 8 hours at :30
+    # 台灣時間 (UTC+8) 每天 8 個時間點：00:30 03:30 06:30 08:30 11:30 14:30 16:30 20:30
+    - cron: '30 0,3,6,8,12,16,19,22 * * *'
   workflow_dispatch:
     inputs:
       submit_indexing:
@@ -30,6 +31,11 @@ jobs:
       - run: npm ci
       - run: npx playwright install chromium --with-deps
       - run: npm run audit
+      # Search Console refreshes once a day; the extra runs just re-render the same numbers.
+      - run: npm run gsc
+        continue-on-error: true
+        env:
+          GOOGLE_SERVICE_ACCOUNT_KEY: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:

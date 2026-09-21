@@ -110,6 +110,15 @@ async function newSiteContext(browser) {
   return { context, page, userAgent };
 }
 
+// Service account JSON, base64-encoded or raw.
+function loadServiceAccount(keyEnv) {
+  try {
+    return JSON.parse(Buffer.from(keyEnv, 'base64').toString('utf-8'));
+  } catch {
+    return JSON.parse(keyEnv);
+  }
+}
+
 function log(module, message, data) {
   const timestamp = new Date().toISOString();
   const prefix = `[${timestamp}] [${module}]`;
@@ -130,5 +139,6 @@ module.exports = {
   humanType,
   simulateReading,
   newSiteContext,
+  loadServiceAccount,
   log,
 };

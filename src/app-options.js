@@ -7,7 +7,7 @@ function parseBoolean(value) {
 }
 
 function resolveModules(argv, env) {
-  const allowed = ['audit', 'visit', 'search', 'indexing', 'indexnow'];
+  const allowed = ['audit', 'gsc', 'inspect', 'visit', 'search', 'indexing', 'indexnow'];
   const flags = argv.filter((arg) => arg.endsWith('-only'));
   if (flags.length > 1) throw new Error('Choose only one --*-only flag');
   for (const arg of argv) {
@@ -16,6 +16,8 @@ function resolveModules(argv, env) {
     }
   }
   if (argv.includes('--audit-only')) return ['audit'];
+  if (argv.includes('--gsc-only')) return ['gsc'];
+  if (argv.includes('--inspect-only')) return ['inspect'];
   if (argv.includes('--visit-only')) return ['visit'];
   if (argv.includes('--search-only')) return ['search'];
   if (argv.includes('--indexing-only')) return ['indexing'];

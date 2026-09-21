@@ -30,13 +30,35 @@ async function readMetadata(page, html) {
   }, html);
 }
 
+// ponytail: full-width chars count as 2 columns; real truncation is pixel-based per font.
+const FULL_WIDTH = /[\u1100-\u115F\u2E80-\uA4CF\uAC00-\uD7A3\uF900-\uFAFF\uFE30-\uFE4F\uFF00-\uFF60\uFFE0-\uFFE6]/;
+const TITLE_MAX_COLUMNS = 60;
+const DESCRIPTION_MAX_COLUMNS = 160;
+
+function displayColumns(text) {
+  return [...text.replace(/\s+/g, ' ').trim()].reduce((sum, char) => sum + (FULL_WIDTH.test(char) ? 2 : 1), 0);
+}
+
+// Host-level bot protection (SiteGround sgcaptcha, Cloudflare challenges) answers with a
+// challenge page instead of the document. We cannot measure the page, but that is not a site defect,
+// so it must not turn CI red. ponytail: signature match; a headless-browser solve is the upgrade path.
+const CHALLENGE_MARKERS = /\/\.well-known\/sgcaptcha\/|cdn-cgi\/challenge-platform|Just a moment\.\.\./i;
+const CHALLENGE_STATUSES = new Set([202, 403, 429, 503]);
+
+function isBotChallenge(status, body) {
+  return CHALLENGE_STATUSES.has(status) && CHALLENGE_MARKERS.test(String(body || ''));
+}
+
 function pageIssues(record) {
   const issues = [];
   if (record.error) return [`讀取失敗：${record.error}`];
+  if (record.blocked) return [`HTTP ${record.status}：主機的機器人防護回傳驗證頁，本次無法檢查內容（非網站故障）`];
   if (record.status !== 200) return [`HTTP ${record.status}${record.location ? ` → ${record.location}` : ''}，確認此網址是否仍應追蹤`];
   if (!record.html) return ['非 HTML 文件，未進行標題與摘要檢查'];
   if (!record.title) issues.push('缺少 title，補上頁面主題與服務地區');
+  else if (displayColumns(record.title) > TITLE_MAX_COLUMNS) issues.push(`title 約 ${Math.ceil(displayColumns(record.title) / 2)} 全形字，搜尋結果約 ${TITLE_MAX_COLUMNS / 2} 字就截斷，把關鍵字與地區前置`);
   if (!record.description) issues.push('缺少 meta description，補上服務特色與明確行動提示');
+  else if (displayColumns(record.description) > DESCRIPTION_MAX_COLUMNS) issues.push(`meta description 約 ${Math.ceil(displayColumns(record.description) / 2)} 全形字，摘要約 ${DESCRIPTION_MAX_COLUMNS / 2} 字就截斷，把賣點與行動提示寫在前段`);
   if (/(?:^|[\s,:;])(noindex|none)(?:$|[\s,;])/i.test(`${record.robots}, ${record.xRobotsTag}`)) issues.push('存在 noindex，若要曝光需確認並移除索引封鎖');
   if (!record.canonical) issues.push('缺少 canonical，確認並指定主要網址');
   else {
@@ -73,6 +95,8 @@ function renderReport(report) {
     lines.push(`## ${cell(site.name)}`, '', `網址來源：${site.source}；已檢查 ${site.pages.length} / ${site.totalUrls} 個網址。`, '',
       `robots.txt：${site.robots.status || site.robots.error}（${site.robots.url}）`, '');
     if (site.warning) lines.push(`注意：${cell(site.warning)}`, '');
+    const blocked = site.pages.filter((page) => page.blocked).length;
+    if (blocked) lines.push(`注意：${blocked} / ${site.pages.length} 個網址被主機的機器人防護擋下，本次未能檢查內容。`, '');
     if (site.totalUrls > site.pages.length) lines.push('本次達 100 頁上限，其餘網址未檢查。', '');
     lines.push('| 網址 | HTTP | 標題 | 摘要 | 待改善項目 |', '| --- | --- | --- | --- | --- |');
     for (const page of site.pages) lines.push(`| ${cell(page.url)} | ${page.status || '-'} | ${cell(page.title)} | ${cell(page.description)} | ${page.issues.map(cell).join('<br>') || '本次檢查未發現問題'} |`);
@@ -110,10 +134,11 @@ async function runAudit(sites, { httpClient = axios, outputDir = 'reports' } = {
           record.location = response.headers.location;
           record.xRobotsTag = response.headers['x-robots-tag'] || '';
           record.html = /(?:text\/html|application\/xhtml\+xml)/i.test(response.headers['content-type'] || '');
+          record.blocked = isBotChallenge(record.status, response.data);
           if (record.status === 200 && record.html) Object.assign(record, await readMetadata(page, String(response.data)));
         } catch (error) { record.error = error.code || error.message; }
         record.issues = pageIssues(record);
-        if (record.error || record.status >= 400) failures++;
+        if (record.error || (record.status >= 400 && !record.blocked)) failures++;
         entry.pages.push(record);
         log('audit', `${url}: ${record.status || record.error}, ${record.issues.length} finding(s)`);
       }
@@ -128,4 +153,4 @@ async function runAudit(sites, { httpClient = axios, outputDir = 'reports' } = {
   return failures;
 }
 
-module.exports = { readMetadata, pageIssues, addDuplicateIssues, renderReport, runAudit };
+module.exports = { displayColumns, isBotChallenge, readMetadata, pageIssues, addDuplicateIssues, renderReport, runAudit };

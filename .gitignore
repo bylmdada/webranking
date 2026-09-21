@@ -4,3 +4,7 @@ credentials/
 *.key
 *.json.key
 reports/
+
+# Session logs and scraped third-party site copies — not for a public repo
+.recall/
+artifacts/

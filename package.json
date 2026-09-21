@@ -6,6 +6,8 @@
   "scripts": {
     "start": "node index.js",
     "audit": "node index.js --audit-only",
+    "gsc": "node index.js --gsc-only",
+    "inspect": "node index.js --inspect-only",
     "sites": "node src/manage-sites.js",
     "visit": "node index.js --visit-only",
     "search": "node index.js --search-only",

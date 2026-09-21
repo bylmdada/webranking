@@ -2,6 +2,8 @@ require('dotenv').config();
 
 const { getSites } = require('./src/config');
 const { runAudit } = require('./src/audit');
+const { runSearchConsole } = require('./src/gsc');
+const { runIndexInspection } = require('./src/inspect');
 const { getAppOptions } = require('./src/app-options');
 const { runVisits } = require('./src/visit');
 const { runSearches } = require('./src/search');
@@ -23,6 +25,16 @@ async function main() {
   let failures = 0;
 
   if (modules.includes('audit')) failures += await runAudit(sites);
+
+  if (modules.includes('gsc')) {
+    console.log('\n--- Search Console Performance Module ---');
+    failures += await runSearchConsole(sites);
+  }
+
+  if (modules.includes('inspect')) {
+    console.log('\n--- URL Inspection Module ---');
+    failures += await runIndexInspection(sites);
+  }
 
   if (modules.includes('visit')) {
     console.log('\n--- Direct Visit Module ---');
